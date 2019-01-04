@@ -54,8 +54,7 @@ degree = tf.placeholder(tf.float32, shape=(mSize,mSize))
 labels = tf.placeholder(tf.float32, shape=(6))
 
 
-weights_1 = tf.Variable(tf.random_normal([mSize,mSize], stddev=1))
-weights_2 = tf.Variable(tf.random_normal([mSize,mSize], stddev=1))
+weights = tf.Variable(tf.random_normal([mSize,mSize], stddev=1))
 
 def GCN(features, adjacency, degree, weights):
     with tf.name_scope('gcn_layer'):
@@ -65,19 +64,23 @@ def GCN(features, adjacency, degree, weights):
 
         return tf.nn.relu(tf.matmul(y, kernel))
 
-gcn1 = GCN(features, adjacency, degree, weights_1)
-gcn2 = GCN(gcn1,     adjacency, degree, weights_2)
+gcn = GCN(features, adjacency, degree, weights)
 
-model = tf.reshape(gcn2, shape=[-1, mSize, mSize])
+model = tf.reshape(gcn, shape=[-1, mSize, mSize])
 model = tf.contrib.layers.flatten(model)
 model = tf.layers.dense(model, 6)
+
+softmax = - labels * tf.nn.log_softmax(model)
+loss = tf.reduce_mean(softmax)
+"""
 with tf.name_scope('loss'):
     loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits_v2(
-            logits = model, labels = labels
+            logits = softmax, labels = labels
         )
     )
-    train_op = tf.train.AdamOptimizer(0.0005, 0.9).minimize(loss)
+"""
+train_op = tf.train.AdamOptimizer(0.0005, 0.9).minimize(loss)
 print()
 print()    
 print("-"*30)
@@ -88,7 +91,7 @@ initializer = tf.initializers.global_variables()
 with tf.Session() as sess:
     sess.run(initializer)
     
-    for i in range(200):
+    for i in range(500):
         rnd = random.randint(0,15)
         # remove improper classification category=2
         while np.argmax(dsLabels[rnd], axis=0) == 2 :
@@ -96,15 +99,10 @@ with tf.Session() as sess:
         _, lossVal = sess.run([train_op, loss], feed_dict = {
                 features: dsFeatures[rnd],
                 adjacency: dsAdjacency[rnd],
-                degree: dsDegree[rnd] + 0.001,
+                degree: dsDegree[rnd] ,
                 labels: dsLabels[rnd]
             }
         )
-        if lossVal == np.nan:
-            logLoss = np.nan
-        elif lossVal == 0.0:
-            logLoss = 0.0
-        else:
-            logLoss = math.log(lossVal)
+
         print("%d\t%2.6f"% (i, lossVal))
 
