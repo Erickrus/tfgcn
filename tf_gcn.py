@@ -56,6 +56,7 @@ labels = tf.placeholder(tf.float32, shape=(6))
 
 weights = tf.Variable(tf.random_normal([mSize,mSize], stddev=1))
 
+
 def GCN(features, adjacency, degree, weights):
     with tf.name_scope('gcn_layer'):
         d_ = tf.pow(degree + tf.eye(mSize), +1.0)
@@ -70,8 +71,11 @@ model = tf.reshape(gcn, shape=[-1, mSize, mSize])
 model = tf.contrib.layers.flatten(model)
 model = tf.layers.dense(model, 6)
 
-softmax = - labels * tf.nn.log_softmax(model)
-loss = tf.reduce_mean(softmax)
+
+with tf.name_scope('loss'):
+    loss = tf.reduce_mean(
+        - labels * tf.nn.log_softmax(model)
+    )
 """
 with tf.name_scope('loss'):
     loss = tf.reduce_mean(
@@ -91,16 +95,16 @@ initializer = tf.initializers.global_variables()
 with tf.Session() as sess:
     sess.run(initializer)
     
-    for i in range(500):
-        rnd = random.randint(0,15)
+    for i in range(1000):
+        rndId = random.randint(0,15)
         # remove improper classification category=2
-        while np.argmax(dsLabels[rnd], axis=0) == 2 :
-            rnd = random.randint(0,15)
+        while np.argmax(dsLabels[rndId], axis=0) == 2 :
+            rndId = random.randint(0,15)
         _, lossVal = sess.run([train_op, loss], feed_dict = {
-                features: dsFeatures[rnd],
-                adjacency: dsAdjacency[rnd],
-                degree: dsDegree[rnd] ,
-                labels: dsLabels[rnd]
+                features: dsFeatures[rndId],
+                adjacency: dsAdjacency[rndId],
+                degree: dsDegree[rndId] ,
+                labels: dsLabels[rndId]
             }
         )
 
